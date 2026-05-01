@@ -8,6 +8,9 @@ import appConfig from './config/app.config';
 import databaseConfig from './config/database.config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AuthModule } from './modules/auth/auth.module';
+import { TenantsModule } from './modules/tenants/tenants.module';
+import { UsersModule } from './modules/users/users.module';
 
 @Module({
   imports: [
@@ -37,6 +40,9 @@ import { AppService } from './app.service';
     }),
 
     ScheduleModule.forRoot(),
+    AuthModule,
+    TenantsModule,
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [AppService],
