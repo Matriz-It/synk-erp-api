@@ -77,6 +77,25 @@ export class AuthService {
     await this.usersService.updateRefreshToken(userId, null);
   }
 
+  async getMe(userId: string, tenantId: string) {
+    const [user, tenant] = await Promise.all([
+      this.usersService.findById(userId),
+      this.tenantsService.findById(tenantId),
+    ]);
+    return {
+      user: {
+        name: user?.name ?? '',
+        email: user?.email ?? '',
+        role: user?.role ?? UserRole.USER,
+      },
+      tenant: {
+        name: tenant?.name ?? '',
+        document: tenant?.document ?? null,
+        plan: tenant?.plan ?? 'free',
+      },
+    };
+  }
+
   private async issueTokens(
     userId: string,
     email: string,
