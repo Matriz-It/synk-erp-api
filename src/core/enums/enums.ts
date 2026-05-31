@@ -1,3 +1,9 @@
+export enum FinanceStatus {
+  ABERTO    = 'aberto',
+  PAGO      = 'pago',
+  CANCELADO = 'cancelado',
+}
+
 export enum OrderStatus {
   PENDENTE     = 'pendente',
   EM_ANDAMENTO = 'em_andamento',
@@ -10,6 +16,7 @@ export enum QuoteStatus {
   PENDENTE  = 'pendente',
   APROVADO  = 'aprovado',
   CANCELADO = 'cancelado',
+  CONCLUIDO = 'concluido',
 }
 
 export enum ClienteTipo {

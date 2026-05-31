@@ -9,12 +9,15 @@ import databaseConfig from './config/database.config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './modules/auth/auth.module';
+import { BillsModule } from './modules/bills/bills.module';
 import { ClientsModule } from './modules/clients/clients.module';
+import { ReceivablesModule } from './modules/receivables/receivables.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { NfeModule } from './modules/nfe/nfe.module';
 import { QuotesModule } from './modules/quotes/quotes.module';
 import { ProductsModule } from './modules/products/products.module';
 import { TenantsModule } from './modules/tenants/tenants.module';
+import { SuppliersModule } from './modules/suppliers/suppliers.module';
 import { UsersModule } from './modules/users/users.module';
 
 @Module({
@@ -52,6 +55,9 @@ import { UsersModule } from './modules/users/users.module';
     ClientsModule,
     OrdersModule,
     QuotesModule,
+    BillsModule,
+    ReceivablesModule,
+    SuppliersModule,
     NfeModule,
   ],
   controllers: [AppController],

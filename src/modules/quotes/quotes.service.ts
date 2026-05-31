@@ -213,6 +213,10 @@ export class QuotesService {
 
     order.client = quote.client;
 
+    // Marca o orçamento como concluído
+    quote.status = QuoteStatus.CONCLUIDO;
+    await this.quoteRepo.save(quote);
+
     const items = order.items;
     const subtotal = items.reduce((acc, i) => acc + i.preco * i.qtd, 0);
     const descontosItem = items.reduce((acc, i) => acc + i.desconto, 0);
