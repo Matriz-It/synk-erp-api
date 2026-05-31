@@ -45,7 +45,8 @@ export class AuthService {
     if (!user) throw new UnauthorizedException('Credenciais inválidas');
 
     const passwordMatch = await bcrypt.compare(dto.password, user.password);
-    if (!passwordMatch) throw new UnauthorizedException('Credenciais inválidas');
+    if (!passwordMatch)
+      throw new UnauthorizedException('Credenciais inválidas');
 
     return this.issueTokens(user.id, user.email, user.role, user.tenantId);
   }
@@ -107,11 +108,15 @@ export class AuthService {
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {
         secret: this.config.getOrThrow<string>('app.jwt.accessSecret'),
-        expiresIn: this.config.getOrThrow<string>('app.jwt.accessExpiresIn') as unknown as number,
+        expiresIn: this.config.getOrThrow<string>(
+          'app.jwt.accessExpiresIn',
+        ) as unknown as number,
       }),
       this.jwtService.signAsync(payload, {
         secret: this.config.getOrThrow<string>('app.jwt.refreshSecret'),
-        expiresIn: this.config.getOrThrow<string>('app.jwt.refreshExpiresIn') as unknown as number,
+        expiresIn: this.config.getOrThrow<string>(
+          'app.jwt.refreshExpiresIn',
+        ) as unknown as number,
       }),
     ]);
 
