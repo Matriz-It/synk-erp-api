@@ -1,24 +1,24 @@
 import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
 import { BaseEntity } from '../../../common/entities/base.entity';
-import { OrderStatus } from '../../../core/enums/enums';
-import { Client } from '../../clients/entities/client.entity';
+import { PurchaseOrderStatus } from '../../../core/enums/enums';
+import { Supplier } from '../../suppliers/entities/supplier.entity';
 import { Tenant } from '../../tenants/entities/tenant.entity';
-import { OrderItem } from './order-item.entity';
+import { PurchaseOrderItem } from './purchase-order-item.entity';
 
-@Entity('orders')
-export class Order extends BaseEntity {
+@Entity('purchase_orders')
+export class PurchaseOrder extends BaseEntity {
   @Column()
   numero: number;
 
-  @Column({ name: 'client_id' })
-  clientId: string;
+  @Column({ name: 'supplier_id' })
+  supplierId: string;
 
-  @ManyToOne(() => Client, { nullable: true })
-  @JoinColumn({ name: 'client_id' })
-  client: Client;
+  @ManyToOne(() => Supplier, { nullable: true })
+  @JoinColumn({ name: 'supplier_id' })
+  supplier: Supplier;
 
-  @Column({ type: 'enum', enum: OrderStatus, default: OrderStatus.PENDENTE })
-  status: OrderStatus;
+  @Column({ type: 'enum', enum: PurchaseOrderStatus, default: PurchaseOrderStatus.RASCUNHO })
+  status: PurchaseOrderStatus;
 
   @Column({ type: 'text', nullable: true })
   obs: string | null;
@@ -36,9 +36,6 @@ export class Order extends BaseEntity {
   @Column({ type: 'varchar', name: 'data_pagamento', length: 10, nullable: true })
   dataPagamento: string | null;
 
-  @Column({ type: 'varchar', name: 'concluido_em', length: 10, nullable: true })
-  concluidoEm: string | null;
-
   @Column({ name: 'tenant_id' })
   tenantId: string;
 
@@ -46,6 +43,6 @@ export class Order extends BaseEntity {
   @JoinColumn({ name: 'tenant_id' })
   tenant: Tenant;
 
-  @OneToMany(() => OrderItem, (item) => item.order, { cascade: true })
-  items: OrderItem[];
+  @OneToMany(() => PurchaseOrderItem, (item) => item.order, { cascade: true })
+  items: PurchaseOrderItem[];
 }

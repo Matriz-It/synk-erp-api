@@ -10,6 +10,8 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './modules/auth/auth.module';
 import { BillsModule } from './modules/bills/bills.module';
+import { CashflowModule } from './modules/cashflow/cashflow.module';
+import { PurchaseOrdersModule } from './modules/purchase-orders/purchase-orders.module';
 import { ClientsModule } from './modules/clients/clients.module';
 import { ReceivablesModule } from './modules/receivables/receivables.module';
 import { OrdersModule } from './modules/orders/orders.module';
@@ -59,6 +61,8 @@ import { UsersModule } from './modules/users/users.module';
     ReceivablesModule,
     SuppliersModule,
     NfeModule,
+    CashflowModule,
+    PurchaseOrdersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

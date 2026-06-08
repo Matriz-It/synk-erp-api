@@ -14,6 +14,10 @@ import { CreateQuoteItemDto } from './create-quote.dto';
 
 export class UpdateQuoteDto {
   @IsOptional()
+  @IsString()
+  clientId?: string;
+
+  @IsOptional()
   @IsEnum(QuoteStatus)
   status?: QuoteStatus;
 

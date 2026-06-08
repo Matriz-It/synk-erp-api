@@ -1,3 +1,11 @@
+export enum PurchaseOrderStatus {
+  RASCUNHO  = 'rascunho',
+  PENDENTE  = 'pendente',
+  APROVADO  = 'aprovado',
+  RECEBIDO  = 'recebido',
+  CANCELADO = 'cancelado',
+}
+
 export enum FinanceStatus {
   ABERTO    = 'aberto',
   PAGO      = 'pago',

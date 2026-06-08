@@ -15,6 +15,10 @@ import { CreateOrderItemDto } from './create-order.dto';
 
 export class UpdateOrderDto {
   @IsOptional()
+  @IsString()
+  clientId?: string;
+
+  @IsOptional()
   @IsEnum(OrderStatus)
   status?: OrderStatus;
 

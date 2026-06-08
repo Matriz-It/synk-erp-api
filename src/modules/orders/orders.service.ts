@@ -135,7 +135,12 @@ export class OrdersService {
     const order = await this.orderRepo.findOneBy({ id, tenantId });
     if (!order) throw new NotFoundException('Pedido não encontrado');
 
-    if (dto.status !== undefined) order.status = dto.status;
+    if (dto.status !== undefined) {
+      if (dto.status === OrderStatus.CONCLUIDO && order.status !== OrderStatus.CONCLUIDO) {
+        order.concluidoEm = new Date().toISOString().split('T')[0];
+      }
+      order.status = dto.status;
+    }
     if (dto.obs !== undefined) order.obs = dto.obs.trim() || null;
     if (dto.descontoGlobal !== undefined) order.descontoGlobal = dto.descontoGlobal;
     if (dto.formaPagamento !== undefined) order.formaPagamento = dto.formaPagamento?.trim() || null;
