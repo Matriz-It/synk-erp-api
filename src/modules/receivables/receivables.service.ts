@@ -17,7 +17,9 @@ export class ReceivablesService {
 
   async list(tenantId: string, query: ListReceivablesDto) {
     const today = new Date().toISOString().split('T')[0];
-    const sevenDays = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const sevenDays = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .split('T')[0];
 
     const qb = this.repo
       .createQueryBuilder('r')
@@ -42,14 +44,24 @@ export class ReceivablesService {
 
     if (query.status) {
       switch (query.status) {
-        case 'pago':    qb.andWhere('r.status = :st', { st: FinanceStatus.PAGO }); break;
-        case 'vencido': qb.andWhere("r.status = 'aberto' AND r.vencimento < :today"); break;
-        case 'vencendo':qb.andWhere("r.status = 'aberto' AND r.vencimento >= :today AND r.vencimento <= :sevenDays"); break;
-        case 'aberto':  qb.andWhere("r.status = 'aberto' AND r.vencimento > :sevenDays"); break;
+        case 'pago':
+          qb.andWhere('r.status = :st', { st: FinanceStatus.PAGO });
+          break;
+        case 'vencido':
+          qb.andWhere("r.status = 'aberto' AND r.vencimento < :today");
+          break;
+        case 'vencendo':
+          qb.andWhere(
+            "r.status = 'aberto' AND r.vencimento >= :today AND r.vencimento <= :sevenDays",
+          );
+          break;
+        case 'aberto':
+          qb.andWhere("r.status = 'aberto' AND r.vencimento > :sevenDays");
+          break;
       }
     }
 
-    return (await qb.getMany()).map(r => this.mapReceivable(r));
+    return (await qb.getMany()).map((r) => this.mapReceivable(r));
   }
 
   async create(tenantId: string, dto: CreateReceivableDto) {
@@ -84,21 +96,22 @@ export class ReceivablesService {
   async update(id: string, tenantId: string, dto: UpdateReceivableDto) {
     const rec = await this.repo.findOneBy({ id, tenantId });
     if (!rec) throw new NotFoundException('Conta a receber não encontrada');
-    if (dto.parceiro !== undefined)  rec.parceiro  = dto.parceiro.trim();
+    if (dto.parceiro !== undefined) rec.parceiro = dto.parceiro.trim();
     if (dto.descricao !== undefined) rec.descricao = dto.descricao.trim();
-    if (dto.valor !== undefined)     rec.valor     = dto.valor;
-    if (dto.vencimento !== undefined)rec.vencimento= dto.vencimento;
-    if (dto.status !== undefined)    rec.status    = dto.status;
-    if (dto.categoria !== undefined) rec.categoria = dto.categoria?.trim() || null;
-    if (dto.obs !== undefined)       rec.obs       = dto.obs?.trim() || null;
+    if (dto.valor !== undefined) rec.valor = dto.valor;
+    if (dto.vencimento !== undefined) rec.vencimento = dto.vencimento;
+    if (dto.status !== undefined) rec.status = dto.status;
+    if (dto.categoria !== undefined)
+      rec.categoria = dto.categoria?.trim() || null;
+    if (dto.obs !== undefined) rec.obs = dto.obs?.trim() || null;
     return this.mapReceivable(await this.repo.save(rec));
   }
 
   async receive(id: string, tenantId: string, dto: ReceiveReceivableDto) {
     const rec = await this.repo.findOneBy({ id, tenantId });
     if (!rec) throw new NotFoundException('Conta a receber não encontrada');
-    rec.status   = FinanceStatus.PAGO;
-    rec.pagoEm   = dto.pagoEm ?? new Date().toISOString().split('T')[0];
+    rec.status = FinanceStatus.PAGO;
+    rec.pagoEm = dto.pagoEm ?? new Date().toISOString().split('T')[0];
     rec.valorPago = dto.valorPago ?? rec.valor;
     return this.mapReceivable(await this.repo.save(rec));
   }
@@ -111,11 +124,17 @@ export class ReceivablesService {
 
   private mapReceivable(r: Receivable) {
     return {
-      id: r.id, numero: r.numero, parceiro: r.parceiro, descricao: r.descricao,
-      valor: r.valor, vencimento: r.vencimento,
+      id: r.id,
+      numero: r.numero,
+      parceiro: r.parceiro,
+      descricao: r.descricao,
+      valor: r.valor,
+      vencimento: r.vencimento,
       status: this.computeStatus(r.status, r.vencimento),
-      categoria: r.categoria ?? '', obs: r.obs ?? '',
-      pagoEm: r.pagoEm ?? undefined, valorPago: r.valorPago ?? undefined,
+      categoria: r.categoria ?? '',
+      obs: r.obs ?? '',
+      pagoEm: r.pagoEm ?? undefined,
+      valorPago: r.valorPago ?? undefined,
       criadoEm: r.createdAt.toISOString().split('T')[0],
     };
   }
@@ -124,7 +143,9 @@ export class ReceivablesService {
     if (stored === FinanceStatus.PAGO) return 'pago';
     if (stored === FinanceStatus.CANCELADO) return 'cancelado';
     const today = new Date().toISOString().split('T')[0];
-    const sevenDays = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const sevenDays = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .split('T')[0];
     if (vencimento < today) return 'vencido';
     if (vencimento <= sevenDays) return 'vencendo';
     return 'aberto';

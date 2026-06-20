@@ -9,22 +9,33 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { UserRole } from '../../core/enums/enums';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import type { AuthUser } from '../auth/strategies/jwt.strategy';
 import { CreateMovementDto } from './dto/create-movement.dto';
 import { CreateProductDto } from './dto/create-product.dto';
+import { ListAllMovementsDto } from './dto/list-all-movements.dto';
 import { ListProductsDto } from './dto/list-products.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductsService } from './products.service';
 
 @Controller('products')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.PROPRIETARIO, UserRole.ADMIN, UserRole.VENDEDOR)
 export class ProductsController {
   constructor(private readonly service: ProductsService) {}
 
   @Get()
   list(@CurrentUser() user: AuthUser, @Query() query: ListProductsDto) {
     return this.service.list(user.tenantId, query);
+  }
+
+  // Rota estática deve vir ANTES da rota dinâmica :id
+  @Get('movements')
+  listAllMovements(@CurrentUser() user: AuthUser, @Query() query: ListAllMovementsDto) {
+    return this.service.listAllMovements(user.tenantId, query);
   }
 
   @Post()

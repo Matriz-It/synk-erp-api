@@ -5,9 +5,10 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { OrderStatus } from '../../core/enums/enums';
+import { FinanceStatus, OrderStatus } from '../../core/enums/enums';
 import { Client } from '../clients/entities/client.entity';
 import { Product } from '../products/entities/product.entity';
+import { Receivable } from '../receivables/entities/receivable.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { ListOrdersDto } from './dto/list-orders.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
@@ -17,13 +18,11 @@ import { Order } from './entities/order.entity';
 @Injectable()
 export class OrdersService {
   constructor(
-    @InjectRepository(Order)    private readonly orderRepo: Repository<Order>,
-    @InjectRepository(OrderItem)
-    private readonly itemRepo: Repository<OrderItem>,
-    @InjectRepository(Product)
-    private readonly productRepo: Repository<Product>,
-    @InjectRepository(Client)
-    private readonly clientRepo: Repository<Client>,
+    @InjectRepository(Order)       private readonly orderRepo: Repository<Order>,
+    @InjectRepository(OrderItem)   private readonly itemRepo: Repository<OrderItem>,
+    @InjectRepository(Product)     private readonly productRepo: Repository<Product>,
+    @InjectRepository(Client)      private readonly clientRepo: Repository<Client>,
+    @InjectRepository(Receivable)  private readonly receivableRepo: Repository<Receivable>,
   ) {}
 
   async list(tenantId: string, query: ListOrdersDto) {
@@ -84,12 +83,13 @@ export class OrdersService {
       [tenantId],
     );
     const numero = parseInt(result[0].next as string, 10);
+    const status = dto.status ?? OrderStatus.PENDENTE;
 
     const order = await this.orderRepo.save(
       this.orderRepo.create({
         numero,
         clientId: dto.clientId,
-        status: dto.status ?? OrderStatus.PENDENTE,
+        status,
         obs: dto.obs?.trim() || null,
         descontoGlobal: dto.descontoGlobal ?? 0,
         formaPagamento: dto.formaPagamento?.trim() || null,
@@ -116,6 +116,12 @@ export class OrdersService {
     );
 
     order.client = client;
+
+    // Gera conta a receber se o pedido já nasce concluído
+    if (status === OrderStatus.CONCLUIDO) {
+      await this.gerarContaReceber(order, client, tenantId);
+    }
+
     return this.mapOrder(order);
   }
 
@@ -135,8 +141,10 @@ export class OrdersService {
     const order = await this.orderRepo.findOneBy({ id, tenantId });
     if (!order) throw new NotFoundException('Pedido não encontrado');
 
+    const wasNotConcluido = order.status !== OrderStatus.CONCLUIDO;
+
     if (dto.status !== undefined) {
-      if (dto.status === OrderStatus.CONCLUIDO && order.status !== OrderStatus.CONCLUIDO) {
+      if (dto.status === OrderStatus.CONCLUIDO && wasNotConcluido) {
         order.concluidoEm = new Date().toISOString().split('T')[0];
       }
       order.status = dto.status;
@@ -149,7 +157,6 @@ export class OrdersService {
     const saved = await this.orderRepo.save(order);
 
     if (dto.items && dto.items.length > 0) {
-      // Substitui todos os itens
       await this.itemRepo.delete({ orderId: id });
 
       type Snap = { nome: string; sku: string; preco: number };
@@ -181,6 +188,12 @@ export class OrdersService {
     }
 
     saved.client = await this.clientRepo.findOneBy({ id: saved.clientId }) ?? undefined as any;
+
+    // Gera conta a receber na primeira transição para CONCLUIDO
+    if (dto.status === OrderStatus.CONCLUIDO && wasNotConcluido) {
+      await this.gerarContaReceber(saved, saved.client, tenantId);
+    }
+
     return this.mapOrder(saved);
   }
 
@@ -194,6 +207,56 @@ export class OrdersService {
     }
     await this.orderRepo.remove(order);
   }
+
+  // ── Geração automática de Conta a Receber ───────────────────────
+
+  private async gerarContaReceber(
+    order: Order,
+    client: Client,
+    tenantId: string,
+  ): Promise<void> {
+    const descricao = `Pedido de Venda #${order.numero}`;
+
+    // Não duplica se já existe uma conta para este pedido
+    const existente = await this.receivableRepo.findOne({ where: { tenantId, descricao } });
+    if (existente) return;
+
+    const items = order.items?.length
+      ? order.items
+      : await this.itemRepo.findBy({ orderId: order.id });
+
+    const subtotal      = items.reduce((acc, i) => acc + i.preco * i.qtd, 0);
+    const descontosItem = items.reduce((acc, i) => acc + i.desconto, 0);
+    const total         = Math.max(0, subtotal - descontosItem - (order.descontoGlobal ?? 0));
+
+    if (total <= 0) return;
+
+    // Vencimento: usa dataPagamento do pedido; se não definido, 30 dias a partir de hoje
+    const vencimento = order.dataPagamento
+      ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+    const numResult = await this.receivableRepo.query(
+      `SELECT COALESCE(MAX(numero), 0) + 1 AS next FROM receivables WHERE tenant_id = $1`,
+      [tenantId],
+    );
+    const numero = parseInt(numResult[0].next, 10);
+
+    await this.receivableRepo.save(
+      this.receivableRepo.create({
+        numero,
+        parceiro:   client.razaoSocial,
+        descricao,
+        valor:      total,
+        vencimento,
+        status:     FinanceStatus.ABERTO,
+        categoria:  'clientes',
+        obs:        order.obs,
+        tenantId,
+      }),
+    );
+  }
+
+  // ── Mappers ──────────────────────────────────────────────────────
 
   private mapOrder(order: Order) {
     const items = order.items ?? [];

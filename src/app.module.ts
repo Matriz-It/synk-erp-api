@@ -11,6 +11,7 @@ import { AppService } from './app.service';
 import { AuthModule } from './modules/auth/auth.module';
 import { BillsModule } from './modules/bills/bills.module';
 import { CashflowModule } from './modules/cashflow/cashflow.module';
+import { EmployeesModule } from './modules/employees/employees.module';
 import { PurchaseOrdersModule } from './modules/purchase-orders/purchase-orders.module';
 import { ClientsModule } from './modules/clients/clients.module';
 import { ReceivablesModule } from './modules/receivables/receivables.module';
@@ -53,6 +54,7 @@ import { UsersModule } from './modules/users/users.module';
     AuthModule,
     TenantsModule,
     UsersModule,
+    EmployeesModule,
     ProductsModule,
     ClientsModule,
     OrdersModule,

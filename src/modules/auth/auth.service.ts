@@ -1,12 +1,14 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { UserRole } from '../../core/enums/enums';
+import { UserRole, UserStatus } from '../../core/enums/enums';
 import { TenantsService } from '../tenants/tenants.service';
 import { UsersService } from '../users/users.service';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { JwtPayload } from './strategies/jwt.strategy';
 
 const BCRYPT_ROUNDS = 12;
@@ -32,7 +34,7 @@ export class AuthService {
       name: dto.adminName,
       email: dto.adminEmail,
       password: hashedPassword,
-      role: UserRole.ADMIN,
+      role: UserRole.PROPRIETARIO,
       document: dto.adminDocument,
       tenantId: tenant.id,
     });
@@ -47,6 +49,9 @@ export class AuthService {
     const passwordMatch = await bcrypt.compare(dto.password, user.password);
     if (!passwordMatch)
       throw new UnauthorizedException('Credenciais inválidas');
+
+    if (user.status === UserStatus.INACTIVE)
+      throw new UnauthorizedException('Usuário inativo. Contate o administrador.');
 
     return this.issueTokens(user.id, user.email, user.role, user.tenantId);
   }
@@ -85,9 +90,10 @@ export class AuthService {
     ]);
     return {
       user: {
+        id: user?.id ?? '',
         name: user?.name ?? '',
         email: user?.email ?? '',
-        role: user?.role ?? UserRole.USER,
+        role: user?.role ?? UserRole.PROPRIETARIO,
       },
       tenant: {
         name: tenant?.name ?? '',
@@ -95,6 +101,31 @@ export class AuthService {
         plan: tenant?.plan ?? 'free',
       },
     };
+  }
+
+  async updateProfile(userId: string, dto: UpdateProfileDto) {
+    const user = await this.usersService.updateProfile(userId, dto);
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      document: user.document ?? '',
+    };
+  }
+
+  async changePassword(userId: string, dto: ChangePasswordDto) {
+    const user = await this.usersService.findById(userId);
+    if (!user) throw new UnauthorizedException('Usuário não encontrado');
+
+    const match = await bcrypt.compare(dto.currentPassword, user.password);
+    if (!match) throw new BadRequestException('Senha atual incorreta');
+
+    if (dto.currentPassword === dto.newPassword)
+      throw new BadRequestException('A nova senha deve ser diferente da atual');
+
+    const hashed = await bcrypt.hash(dto.newPassword, BCRYPT_ROUNDS);
+    await this.usersService.updatePassword(userId, hashed);
   }
 
   private async issueTokens(

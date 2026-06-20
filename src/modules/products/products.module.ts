@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { RolesGuard } from '../../common/guards/roles.guard';
 import { UsersModule } from '../users/users.module';
 import { ProductMovement } from './entities/product-movement.entity';
 import { Product } from './entities/product.entity';
@@ -12,7 +13,7 @@ import { ProductsService } from './products.service';
     UsersModule,
   ],
   controllers: [ProductsController],
-  providers: [ProductsService],
+  providers: [ProductsService, RolesGuard],
   exports: [ProductsService],
 })
 export class ProductsModule {}

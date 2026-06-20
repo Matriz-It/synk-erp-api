@@ -46,8 +46,16 @@ export enum MovementType {
 }
 
 export enum UserRole {
+  PROPRIETARIO = 'proprietario',
   ADMIN = 'admin',
+  FINANCEIRO = 'financeiro',
+  VENDEDOR = 'vendedor',
   USER = 'user',
+}
+
+export enum UserStatus {
+  ACTIVE = 'active',
+  INACTIVE = 'inactive',
 }
 
 export enum TenantPlan {

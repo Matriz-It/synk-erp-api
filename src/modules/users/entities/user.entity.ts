@@ -1,6 +1,6 @@
 import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseEntity } from '../../../common/entities/base.entity';
-import { UserRole } from '../../../core/enums/enums';
+import { UserRole, UserStatus } from '../../../core/enums/enums';
 import { Tenant } from '../../tenants/entities/tenant.entity';
 
 @Entity('users')
@@ -14,8 +14,11 @@ export class User extends BaseEntity {
   @Column()
   password: string;
 
-  @Column({ type: 'enum', enum: UserRole, default: UserRole.ADMIN })
+  @Column({ type: 'enum', enum: UserRole, default: UserRole.PROPRIETARIO })
   role: UserRole;
+
+  @Column({ type: 'varchar', length: 20, default: UserStatus.ACTIVE })
+  status: UserStatus;
 
   @Column({ type: 'varchar', nullable: true, length: 14 })
   document: string | null;

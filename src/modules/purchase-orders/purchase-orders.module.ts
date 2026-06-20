@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { RolesGuard } from '../../common/guards/roles.guard';
 import { Bill } from '../bills/entities/bill.entity';
 import { Product } from '../products/entities/product.entity';
 import { Supplier } from '../suppliers/entities/supplier.entity';
@@ -11,7 +12,7 @@ import { PurchaseOrdersService } from './purchase-orders.service';
 @Module({
   imports: [TypeOrmModule.forFeature([PurchaseOrder, PurchaseOrderItem, Supplier, Product, Bill])],
   controllers: [PurchaseOrdersController],
-  providers: [PurchaseOrdersService],
+  providers: [PurchaseOrdersService, RolesGuard],
   exports: [PurchaseOrdersService],
 })
 export class PurchaseOrdersModule {}

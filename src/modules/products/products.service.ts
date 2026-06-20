@@ -10,6 +10,7 @@ import { MovementType } from '../../core/enums/enums';
 import { UsersService } from '../users/users.service';
 import { CreateMovementDto } from './dto/create-movement.dto';
 import { CreateProductDto } from './dto/create-product.dto';
+import { ListAllMovementsDto } from './dto/list-all-movements.dto';
 import { ListProductsDto } from './dto/list-products.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductMovement } from './entities/product-movement.entity';
@@ -165,6 +166,25 @@ export class ProductsService {
     await this.repo.save(product);
 
     return this.mapMovement(mov);
+  }
+
+  async listAllMovements(tenantId: string, query: ListAllMovementsDto) {
+    const qb = this.movRepo
+      .createQueryBuilder('m')
+      .innerJoinAndSelect('m.product', 'p')
+      .where('p.tenant_id = :tenantId', { tenantId })
+      .orderBy('m.createdAt', 'DESC');
+
+    if (query.tipo) qb.andWhere('m.tipo = :tipo', { tipo: query.tipo });
+    if (query.productId) qb.andWhere('m.product_id = :productId', { productId: query.productId });
+
+    const movs = await qb.getMany();
+    return movs.map((m) => ({
+      ...this.mapMovement(m),
+      produto: m.product?.nome ?? '',
+      sku: m.product?.sku ?? '',
+      productId: m.productId,
+    }));
   }
 
   async listMovements(productId: string, tenantId: string) {

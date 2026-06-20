@@ -1,4 +1,4 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserRole } from '../../core/enums/enums';
@@ -45,7 +45,13 @@ export class UsersService {
       .createQueryBuilder('user')
       .innerJoin('user.tenant', 'tenant')
       .where("REGEXP_REPLACE(tenant.document, '[^0-9]', '', 'g') = :cnpj", { cnpj })
-      .andWhere('user.role = :role', { role: UserRole.ADMIN })
+      .andWhere('user.role IN (:...roles)', {
+        roles: [UserRole.PROPRIETARIO, UserRole.ADMIN],
+      })
+      .orderBy(
+        `CASE user.role WHEN 'proprietario' THEN 1 ELSE 2 END`,
+        'ASC',
+      )
       .getOne();
   }
 
@@ -55,5 +61,21 @@ export class UsersService {
 
   async updateRefreshToken(id: string, refreshToken: string | null): Promise<void> {
     await this.repo.update(id, { refreshToken });
+  }
+
+  async updateProfile(
+    id: string,
+    data: { name?: string; document?: string },
+  ): Promise<User> {
+    const user = await this.repo.findOneBy({ id });
+    if (!user) throw new NotFoundException('Usuário não encontrado');
+    if (data.name !== undefined) user.name = data.name.trim();
+    if (data.document !== undefined)
+      user.document = data.document ? data.document.replace(/\D/g, '') : null;
+    return this.repo.save(user);
+  }
+
+  async updatePassword(id: string, hashedPassword: string): Promise<void> {
+    await this.repo.update(id, { password: hashedPassword, refreshToken: null });
   }
 }

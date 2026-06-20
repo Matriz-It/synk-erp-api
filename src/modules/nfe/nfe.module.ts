@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { RolesGuard } from '../../common/guards/roles.guard';
 import { Client } from '../clients/entities/client.entity';
 import { NfeItem } from './entities/nfe-item.entity';
 import { NfeVencimento } from './entities/nfe-vencimento.entity';
@@ -10,7 +11,7 @@ import { NfeService } from './nfe.service';
 @Module({
   imports: [TypeOrmModule.forFeature([Nfe, NfeItem, NfeVencimento, Client])],
   controllers: [NfeController],
-  providers: [NfeService],
+  providers: [NfeService, RolesGuard],
   exports: [NfeService],
 })
 export class NfeModule {}

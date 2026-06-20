@@ -143,6 +143,16 @@ export class PurchaseOrdersService {
       await this.gerarContaPagar(saved, tenantId);
     }
 
+    // Sincroniza valor da conta quando o PO já estava aprovado e houve mudança de itens/desconto
+    if (wasAprovado && saved.status === PurchaseOrderStatus.APROVADO && dto.items) {
+      await this.sincronizarContaPagar(saved, tenantId);
+    }
+
+    // Cancela conta a pagar quando um PO aprovado é cancelado
+    if (wasAprovado && saved.status === PurchaseOrderStatus.CANCELADO) {
+      await this.cancelarContaPagar(saved, tenantId);
+    }
+
     return this.mapOrder(saved);
   }
 
@@ -195,6 +205,32 @@ export class PurchaseOrdersService {
         tenantId,
       }),
     );
+  }
+
+  private async sincronizarContaPagar(order: PurchaseOrder, tenantId: string): Promise<void> {
+    const descricao = `Pedido de Compra #${order.numero}`;
+    const existente = await this.billRepo.findOne({ where: { tenantId, descricao } });
+    if (!existente) return;
+
+    const items = order.items?.length
+      ? order.items
+      : await this.itemRepo.findBy({ orderId: order.id });
+
+    const subtotal      = items.reduce((acc, i) => acc + i.preco * i.qtd, 0);
+    const descontosItem = items.reduce((acc, i) => acc + i.desconto, 0);
+    const total         = Math.max(0, subtotal - descontosItem - order.descontoGlobal);
+
+    existente.valor = total;
+    if (order.dataPagamento) existente.vencimento = order.dataPagamento;
+    await this.billRepo.save(existente);
+  }
+
+  private async cancelarContaPagar(order: PurchaseOrder, tenantId: string): Promise<void> {
+    const descricao = `Pedido de Compra #${order.numero}`;
+    const existente = await this.billRepo.findOne({ where: { tenantId, descricao } });
+    if (!existente || existente.status !== FinanceStatus.ABERTO) return;
+    existente.status = FinanceStatus.CANCELADO;
+    await this.billRepo.save(existente);
   }
 
   // ── Mappers ──────────────────────────────────────────────────────
