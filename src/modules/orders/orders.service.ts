@@ -123,7 +123,7 @@ export class OrdersService {
 
     // Gera conta a receber, saída de estoque e atualiza totais do cliente se já nasce concluído
     if (status === OrderStatus.CONCLUIDO) {
-      await this.gerarContaReceber(order, client, tenantId);
+      await this.gerarContaReceber(order, client, tenantId, dto.pago);
       await this.gerarMovimentacaoSaida(order, tenantId, '');
       await this.atualizarTotaisCliente(order.clientId, tenantId);
     }
@@ -197,7 +197,7 @@ export class OrdersService {
 
     // Gera conta a receber, saída de estoque e atualiza totais do cliente ao concluir
     if (dto.status === OrderStatus.CONCLUIDO && wasNotConcluido) {
-      await this.gerarContaReceber(saved, saved.client, tenantId);
+      await this.gerarContaReceber(saved, saved.client, tenantId, dto.pago);
       await this.gerarMovimentacaoSaida(saved, tenantId, userId);
       await this.atualizarTotaisCliente(saved.clientId, tenantId);
     }
@@ -289,6 +289,7 @@ export class OrdersService {
     order: Order,
     client: Client,
     tenantId: string,
+    pago = false,
   ): Promise<void> {
     const descricao = `Pedido de Venda #${order.numero}`;
 
@@ -306,9 +307,9 @@ export class OrdersService {
 
     if (total <= 0) return;
 
-    // Vencimento: usa dataPagamento do pedido; se não definido, 30 dias a partir de hoje
+    const hoje      = new Date().toISOString().split('T')[0];
     const vencimento = order.dataPagamento
-      ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      ?? (pago ? hoje : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
 
     const numResult = await this.receivableRepo.query(
       `SELECT COALESCE(MAX(numero), 0) + 1 AS next FROM receivables WHERE tenant_id = $1`,
@@ -323,10 +324,15 @@ export class OrdersService {
         descricao,
         valor:      total,
         vencimento,
-        status:     FinanceStatus.ABERTO,
+        status:     pago ? FinanceStatus.PAGO : FinanceStatus.ABERTO,
         categoria:  'clientes',
         obs:        order.obs,
         tenantId,
+        // Se pago, registra data e valor recebido imediatamente
+        ...(pago && {
+          pagoEm:    order.dataPagamento ?? hoje,
+          valorPago: total,
+        }),
       }),
     );
   }

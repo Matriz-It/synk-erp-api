@@ -1,6 +1,7 @@
 import {
   ArrayMinSize,
   IsArray,
+  IsBoolean,
   IsEnum,
   IsInt,
   IsNumber,
@@ -39,6 +40,10 @@ export class UpdateOrderDto {
   @IsOptional()
   @IsString()
   dataPagamento?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  pago?: boolean;
 
   // Quando enviado, substitui todos os itens do pedido
   @IsOptional()

@@ -1,6 +1,7 @@
 import {
   ArrayMinSize,
   IsArray,
+  IsBoolean,
   IsEnum,
   IsInt,
   IsNotEmpty,
@@ -56,6 +57,10 @@ export class CreateOrderDto {
   @IsOptional()
   @IsString()
   dataPagamento?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  pago?: boolean;
 
   @IsArray()
   @ArrayMinSize(1)
