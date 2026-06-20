@@ -39,6 +39,11 @@ export class PurchaseOrdersController {
     return this.service.update(id, u.tenantId, dto);
   }
 
+  @Post(':id/receive')
+  receive(@CurrentUser() u: AuthUser, @Param('id') id: string) {
+    return this.service.receive(id, u.tenantId, u.id);
+  }
+
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@CurrentUser() u: AuthUser, @Param('id') id: string) {

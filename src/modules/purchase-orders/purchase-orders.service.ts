@@ -5,10 +5,12 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { FinanceStatus, PurchaseOrderStatus } from '../../core/enums/enums';
+import { FinanceStatus, MovementType, PurchaseOrderStatus } from '../../core/enums/enums';
 import { Bill } from '../bills/entities/bill.entity';
+import { ProductMovement } from '../products/entities/product-movement.entity';
 import { Product } from '../products/entities/product.entity';
 import { Supplier } from '../suppliers/entities/supplier.entity';
+import { UsersService } from '../users/users.service';
 import { CreatePurchaseOrderDto } from './dto/create-purchase-order.dto';
 import { ListPurchaseOrdersDto } from './dto/list-purchase-orders.dto';
 import { UpdatePurchaseOrderDto } from './dto/update-purchase-order.dto';
@@ -23,6 +25,8 @@ export class PurchaseOrdersService {
     @InjectRepository(Supplier)          private readonly supplierRepo: Repository<Supplier>,
     @InjectRepository(Product)           private readonly productRepo: Repository<Product>,
     @InjectRepository(Bill)              private readonly billRepo: Repository<Bill>,
+    @InjectRepository(ProductMovement)   private readonly movementRepo: Repository<ProductMovement>,
+    private readonly usersService: UsersService,
   ) {}
 
   async list(tenantId: string, query: ListPurchaseOrdersDto) {
@@ -163,6 +167,62 @@ export class PurchaseOrdersService {
       throw new BadRequestException('Apenas rascunhos podem ser excluídos');
     }
     await this.repo.remove(order);
+  }
+
+  // ── Recebimento: muda status para RECEBIDO e gera entrada no estoque ──
+
+  async receive(id: string, tenantId: string, userId: string) {
+    const order = await this.repo.findOne({ where: { id, tenantId }, relations: ['supplier', 'items'] });
+    if (!order) throw new NotFoundException('Pedido de compra não encontrado');
+
+    if (order.status !== PurchaseOrderStatus.APROVADO) {
+      throw new BadRequestException(
+        'Apenas pedidos com status "aprovado" podem ser recebidos',
+      );
+    }
+
+    order.status = PurchaseOrderStatus.RECEBIDO;
+    await this.repo.save(order);
+
+    await this.gerarMovimentacaoEstoque(order, tenantId, userId);
+
+    return this.mapOrder(order);
+  }
+
+  private async gerarMovimentacaoEstoque(
+    order: PurchaseOrder,
+    tenantId: string,
+    userId: string,
+  ): Promise<void> {
+    const items = order.items?.length
+      ? order.items
+      : await this.itemRepo.findBy({ orderId: order.id });
+
+    const operador = await this.usersService.findById(userId).then(
+      (u) => u?.name ?? u?.email ?? 'Sistema',
+    );
+
+    for (const item of items) {
+      const product = await this.productRepo.findOneBy({ id: item.productId, tenantId });
+      if (!product) continue; // produto pode ter sido removido
+
+      const saldoApos = product.qtd + item.qtd;
+
+      await this.movementRepo.save(
+        this.movementRepo.create({
+          tipo:      MovementType.ENTRADA,
+          qtd:       item.qtd,
+          motivo:    `Pedido de Compra #${order.numero} — recebimento`,
+          saldoApos,
+          operador,
+          productId: product.id,
+          userId,
+        }),
+      );
+
+      product.qtd = saldoApos;
+      await this.productRepo.save(product);
+    }
   }
 
   // ── Geração automática de Conta a Pagar ─────────────────────────
