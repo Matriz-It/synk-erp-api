@@ -121,10 +121,11 @@ export class OrdersService {
 
     order.client = client;
 
-    // Gera conta a receber e saída de estoque se o pedido já nasce concluído
+    // Gera conta a receber, saída de estoque e atualiza totais do cliente se já nasce concluído
     if (status === OrderStatus.CONCLUIDO) {
       await this.gerarContaReceber(order, client, tenantId);
       await this.gerarMovimentacaoSaida(order, tenantId, '');
+      await this.atualizarTotaisCliente(order.clientId, tenantId);
     }
 
     return this.mapOrder(order);
@@ -194,10 +195,11 @@ export class OrdersService {
 
     saved.client = await this.clientRepo.findOneBy({ id: saved.clientId }) ?? undefined as any;
 
-    // Gera conta a receber e saída de estoque na primeira transição para CONCLUIDO
+    // Gera conta a receber, saída de estoque e atualiza totais do cliente ao concluir
     if (dto.status === OrderStatus.CONCLUIDO && wasNotConcluido) {
       await this.gerarContaReceber(saved, saved.client, tenantId);
       await this.gerarMovimentacaoSaida(saved, tenantId, userId);
+      await this.atualizarTotaisCliente(saved.clientId, tenantId);
     }
 
     return this.mapOrder(saved);
@@ -212,6 +214,35 @@ export class OrdersService {
       );
     }
     await this.orderRepo.remove(order);
+  }
+
+  // ── Atualização de totais do cliente ────────────────────────────
+
+  private async atualizarTotaisCliente(clientId: string, tenantId: string): Promise<void> {
+    // Recalcula a partir de todos os pedidos CONCLUÍDOS do cliente (fonte de verdade)
+    const result = await this.orderRepo.query(
+      `SELECT
+         COUNT(o.id)::int AS total_pedidos,
+         COALESCE(SUM(
+           (SELECT COALESCE(SUM(i.preco * i.qtd - i.desconto), 0)
+            FROM order_items i WHERE i.order_id = o.id)
+           - o.desconto_global
+         ), 0)::numeric AS total_gasto
+       FROM orders o
+       WHERE o.client_id = $1
+         AND o.tenant_id = $2
+         AND o.status = 'concluido'`,
+      [clientId, tenantId],
+    );
+
+    const { total_pedidos, total_gasto } = result[0];
+    await this.clientRepo.update(
+      { id: clientId, tenantId },
+      {
+        totalPedidos: parseInt(total_pedidos, 10),
+        totalGasto:   parseFloat(total_gasto),
+      },
+    );
   }
 
   // ── Saída automática de estoque ao concluir pedido ──────────────
