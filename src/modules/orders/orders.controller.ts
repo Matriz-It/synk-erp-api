@@ -49,7 +49,7 @@ export class OrdersController {
     @Param('id') id: string,
     @Body() dto: UpdateOrderDto,
   ) {
-    return this.service.update(id, user.tenantId, dto);
+    return this.service.update(id, user.tenantId, dto, user.id);
   }
 
   @Delete(':id')

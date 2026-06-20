@@ -5,10 +5,12 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { FinanceStatus, OrderStatus } from '../../core/enums/enums';
+import { FinanceStatus, MovementType, OrderStatus } from '../../core/enums/enums';
 import { Client } from '../clients/entities/client.entity';
+import { ProductMovement } from '../products/entities/product-movement.entity';
 import { Product } from '../products/entities/product.entity';
 import { Receivable } from '../receivables/entities/receivable.entity';
+import { UsersService } from '../users/users.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { ListOrdersDto } from './dto/list-orders.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
@@ -18,11 +20,13 @@ import { Order } from './entities/order.entity';
 @Injectable()
 export class OrdersService {
   constructor(
-    @InjectRepository(Order)       private readonly orderRepo: Repository<Order>,
-    @InjectRepository(OrderItem)   private readonly itemRepo: Repository<OrderItem>,
-    @InjectRepository(Product)     private readonly productRepo: Repository<Product>,
-    @InjectRepository(Client)      private readonly clientRepo: Repository<Client>,
-    @InjectRepository(Receivable)  private readonly receivableRepo: Repository<Receivable>,
+    @InjectRepository(Order)          private readonly orderRepo: Repository<Order>,
+    @InjectRepository(OrderItem)      private readonly itemRepo: Repository<OrderItem>,
+    @InjectRepository(Product)        private readonly productRepo: Repository<Product>,
+    @InjectRepository(Client)         private readonly clientRepo: Repository<Client>,
+    @InjectRepository(Receivable)     private readonly receivableRepo: Repository<Receivable>,
+    @InjectRepository(ProductMovement) private readonly movementRepo: Repository<ProductMovement>,
+    private readonly usersService: UsersService,
   ) {}
 
   async list(tenantId: string, query: ListOrdersDto) {
@@ -117,9 +121,10 @@ export class OrdersService {
 
     order.client = client;
 
-    // Gera conta a receber se o pedido já nasce concluído
+    // Gera conta a receber e saída de estoque se o pedido já nasce concluído
     if (status === OrderStatus.CONCLUIDO) {
       await this.gerarContaReceber(order, client, tenantId);
+      await this.gerarMovimentacaoSaida(order, tenantId, '');
     }
 
     return this.mapOrder(order);
@@ -137,7 +142,7 @@ export class OrdersService {
     };
   }
 
-  async update(id: string, tenantId: string, dto: UpdateOrderDto) {
+  async update(id: string, tenantId: string, dto: UpdateOrderDto, userId = '') {
     const order = await this.orderRepo.findOneBy({ id, tenantId });
     if (!order) throw new NotFoundException('Pedido não encontrado');
 
@@ -189,9 +194,10 @@ export class OrdersService {
 
     saved.client = await this.clientRepo.findOneBy({ id: saved.clientId }) ?? undefined as any;
 
-    // Gera conta a receber na primeira transição para CONCLUIDO
+    // Gera conta a receber e saída de estoque na primeira transição para CONCLUIDO
     if (dto.status === OrderStatus.CONCLUIDO && wasNotConcluido) {
       await this.gerarContaReceber(saved, saved.client, tenantId);
+      await this.gerarMovimentacaoSaida(saved, tenantId, userId);
     }
 
     return this.mapOrder(saved);
@@ -206,6 +212,44 @@ export class OrdersService {
       );
     }
     await this.orderRepo.remove(order);
+  }
+
+  // ── Saída automática de estoque ao concluir pedido ──────────────
+
+  private async gerarMovimentacaoSaida(
+    order: Order,
+    tenantId: string,
+    userId: string,
+  ): Promise<void> {
+    const items = order.items?.length
+      ? order.items
+      : await this.itemRepo.findBy({ orderId: order.id });
+
+    const operador = userId
+      ? await this.usersService.findById(userId).then((u) => u?.name ?? u?.email ?? 'Sistema')
+      : 'Sistema';
+
+    for (const item of items) {
+      const product = await this.productRepo.findOneBy({ id: item.productId, tenantId });
+      if (!product) continue;
+
+      const saldoApos = Math.max(0, product.qtd - item.qtd);
+
+      await this.movementRepo.save(
+        this.movementRepo.create({
+          tipo:      MovementType.SAIDA,
+          qtd:       item.qtd,
+          motivo:    `Pedido de Venda #${order.numero} — concluído`,
+          saldoApos,
+          operador,
+          productId: product.id,
+          userId:    userId || 'sistema',
+        }),
+      );
+
+      product.qtd = saldoApos;
+      await this.productRepo.save(product);
+    }
   }
 
   // ── Geração automática de Conta a Receber ───────────────────────
