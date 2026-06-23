@@ -59,7 +59,8 @@ export class PurchaseOrdersService {
     for (const item of dto.items) {
       const product = await this.productRepo.findOneBy({ id: item.productId, tenantId });
       if (!product) throw new NotFoundException(`Produto não encontrado: ${item.productId}`);
-      snaps.set(item.productId, { nome: product.nome, sku: product.sku, preco: product.preco });
+      // Usa preço de custo do fornecedor se disponível, senão usa preço de venda
+      snaps.set(item.productId, { nome: product.nome, sku: product.sku, preco: product.precoCusto ?? product.preco });
     }
 
     const result = await this.repo.query(
@@ -126,7 +127,7 @@ export class PurchaseOrdersService {
       for (const item of dto.items) {
         const product = await this.productRepo.findOneBy({ id: item.productId, tenantId });
         if (!product) throw new NotFoundException(`Produto não encontrado: ${item.productId}`);
-        snaps.set(item.productId, { nome: product.nome, sku: product.sku, preco: product.preco });
+        snaps.set(item.productId, { nome: product.nome, sku: product.sku, preco: product.precoCusto ?? product.preco });
       }
       saved.items = await Promise.all(dto.items.map((item) => {
         const snap = snaps.get(item.productId)!;

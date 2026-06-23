@@ -30,6 +30,12 @@ export class CreateProductDto {
   preco: number;
 
   @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Type(() => Number)
+  precoCusto?: number;
+
+  @IsOptional()
   @IsInt()
   @Min(0)
   @Type(() => Number)

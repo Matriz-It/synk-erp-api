@@ -24,6 +24,17 @@ export class Product extends BaseEntity {
   })
   preco: number;
 
+  @Column({
+    name: 'preco_custo',
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    default: null,
+    transformer: { to: (v: number | null) => v, from: (v: string | null) => v !== null ? parseFloat(v) : null },
+  })
+  precoCusto: number | null;
+
   @Column({ default: 0 })
   qtd: number;
 
