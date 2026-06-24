@@ -323,7 +323,7 @@ export class OrdersService {
     await this.receivableRepo.save(
       this.receivableRepo.create({
         numero,
-        parceiro:   client?.razaoSocial ?? 'Consumidor Final',
+        parceiro:   client?.razaoSocial ?? 'Não informado',
         descricao,
         valor:      total,
         vencimento,
