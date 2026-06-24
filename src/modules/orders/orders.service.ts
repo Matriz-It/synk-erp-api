@@ -193,7 +193,9 @@ export class OrdersService {
       saved.items = await this.itemRepo.findBy({ orderId: id });
     }
 
-    saved.client = await this.clientRepo.findOneBy({ id: saved.clientId }) ?? undefined as any;
+    saved.client = saved.clientId
+      ? (await this.clientRepo.findOneBy({ id: saved.clientId }) ?? undefined as any)
+      : null;
 
     // Gera conta a receber, saída de estoque e atualiza totais do cliente ao concluir
     if (dto.status === OrderStatus.CONCLUIDO && wasNotConcluido) {
