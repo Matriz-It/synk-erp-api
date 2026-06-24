@@ -32,9 +32,10 @@ export class CreateOrderItemDto {
 }
 
 export class CreateOrderDto {
+  @IsOptional()
   @IsString()
   @IsNotEmpty()
-  clientId: string;
+  clientId?: string;
 
   @IsOptional()
   @IsEnum(OrderStatus)

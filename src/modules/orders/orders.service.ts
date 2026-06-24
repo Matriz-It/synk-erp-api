@@ -60,11 +60,11 @@ export class OrdersService {
   }
 
   async create(tenantId: string, dto: CreateOrderDto) {
-    const client = await this.clientRepo.findOneBy({
-      id: dto.clientId,
-      tenantId,
-    });
-    if (!client) throw new NotFoundException('Cliente não encontrado');
+    // clientId é opcional — venda rápida permite "Consumidor Final" sem vínculo
+    const client = dto.clientId
+      ? await this.clientRepo.findOneBy({ id: dto.clientId, tenantId })
+      : null;
+    if (dto.clientId && !client) throw new NotFoundException('Cliente não encontrado');
 
     type Snap = { nome: string; sku: string; preco: number };
     const snaps = new Map<string, Snap>();
@@ -92,7 +92,7 @@ export class OrdersService {
     const order = await this.orderRepo.save(
       this.orderRepo.create({
         numero,
-        clientId: dto.clientId,
+        clientId: dto.clientId ?? null,
         status,
         obs: dto.obs?.trim() || null,
         descontoGlobal: dto.descontoGlobal ?? 0,
@@ -218,7 +218,8 @@ export class OrdersService {
 
   // ── Atualização de totais do cliente ────────────────────────────
 
-  private async atualizarTotaisCliente(clientId: string, tenantId: string): Promise<void> {
+  private async atualizarTotaisCliente(clientId: string | null, tenantId: string): Promise<void> {
+    if (!clientId) return; // venda rápida sem cliente vinculado
     // Recalcula a partir de todos os pedidos CONCLUÍDOS do cliente (fonte de verdade)
     const result = await this.orderRepo.query(
       `SELECT
@@ -320,7 +321,7 @@ export class OrdersService {
     await this.receivableRepo.save(
       this.receivableRepo.create({
         numero,
-        parceiro:   client.razaoSocial,
+        parceiro:   client?.razaoSocial ?? 'Consumidor Final',
         descricao,
         valor:      total,
         vencimento,

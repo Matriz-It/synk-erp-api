@@ -10,8 +10,8 @@ export class Order extends BaseEntity {
   @Column()
   numero: number;
 
-  @Column({ name: 'client_id' })
-  clientId: string;
+  @Column({ name: 'client_id', nullable: true, type: 'uuid' })
+  clientId: string | null;
 
   @ManyToOne(() => Client, { nullable: true })
   @JoinColumn({ name: 'client_id' })
