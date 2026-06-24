@@ -119,7 +119,7 @@ export class OrdersService {
       }),
     );
 
-    order.client = client;
+    if (client) order.client = client;
 
     // Gera conta a receber, saída de estoque e atualiza totais do cliente se já nasce concluído
     if (status === OrderStatus.CONCLUIDO) {

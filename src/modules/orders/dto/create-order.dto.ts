@@ -16,7 +16,7 @@ import { OrderStatus } from '../../../core/enums/enums';
 
 export class CreateOrderItemDto {
   @IsString()
-  @IsNotEmpty()
+  @IsUUID()
   productId: string;
 
   @IsInt()
