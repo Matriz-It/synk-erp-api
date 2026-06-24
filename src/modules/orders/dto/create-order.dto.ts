@@ -4,10 +4,10 @@ import {
   IsBoolean,
   IsEnum,
   IsInt,
-  IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
+  IsUUID,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -34,7 +34,7 @@ export class CreateOrderItemDto {
 export class CreateOrderDto {
   @IsOptional()
   @IsString()
-  @IsNotEmpty()
+  @IsUUID()
   clientId?: string;
 
   @IsOptional()

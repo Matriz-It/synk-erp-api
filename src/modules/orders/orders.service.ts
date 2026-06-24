@@ -288,7 +288,7 @@ export class OrdersService {
 
   private async gerarContaReceber(
     order: Order,
-    client: Client,
+    client: Client | null | undefined,
     tenantId: string,
     pago = false,
   ): Promise<void> {
