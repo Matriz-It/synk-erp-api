@@ -179,7 +179,50 @@ export class ProductsService {
     product.qtd = saldoApos;
     await this.repo.save(product);
 
+    // Se for ENTRADA e o produto tem composição, desconta as matérias-primas
+    if (dto.tipo === MovementType.ENTRADA) {
+      await this.descontarMateriasPrimas(productId, dto.qtd, userId, operador, tenantId);
+    }
+
     return this.mapMovement(mov);
+  }
+
+  private async descontarMateriasPrimas(
+    productId: string,
+    qtdProduzida: number,
+    userId: string,
+    operador: string,
+    tenantId: string,
+  ): Promise<void> {
+    const componentes = await this.compRepo.find({
+      where: { productId },
+      relations: ['material'],
+    });
+    if (!componentes.length) return;
+
+    for (const comp of componentes) {
+      const mat = await this.repo.findOneBy({ id: comp.materialId, tenantId });
+      if (!mat) continue;
+
+      const qtdConsumir = comp.quantidade * qtdProduzida;
+      const saldoApos   = Math.max(0, mat.qtd - qtdConsumir);
+      const motivo      = `Consumo para produção de ${qtdProduzida} un. — ${mat.nome}`;
+
+      await this.movRepo.save(
+        this.movRepo.create({
+          tipo:      MovementType.SAIDA,
+          qtd:       qtdConsumir,
+          motivo,
+          saldoApos,
+          productId: comp.materialId,
+          userId,
+          operador,
+        }),
+      );
+
+      mat.qtd = saldoApos;
+      await this.repo.save(mat);
+    }
   }
 
   async listAllMovements(tenantId: string, query: ListAllMovementsDto) {
