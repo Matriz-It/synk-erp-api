@@ -20,6 +20,7 @@ import { NfeModule } from './modules/nfe/nfe.module';
 import { QuotesModule } from './modules/quotes/quotes.module';
 import { ProductsModule } from './modules/products/products.module';
 import { TenantsModule } from './modules/tenants/tenants.module';
+import { TenantConfigModule } from './modules/tenant-config/tenant-config.module';
 import { SuppliersModule } from './modules/suppliers/suppliers.module';
 import { UsersModule } from './modules/users/users.module';
 
@@ -53,6 +54,7 @@ import { UsersModule } from './modules/users/users.module';
     ScheduleModule.forRoot(),
     AuthModule,
     TenantsModule,
+    TenantConfigModule,
     UsersModule,
     EmployeesModule,
     ProductsModule,
