@@ -303,14 +303,18 @@ export class ProductsService {
     const product = await this.repo.findOneBy({ id: productId, tenantId });
     if (!product) throw new NotFoundException('Produto não encontrado');
     if (product.isMateriaPrima) {
-      throw new Error('Matérias-primas não podem ter composição');
+      throw new BadRequestException('Matérias-primas não podem ter composição');
     }
 
     // Valida se todos os materiais pertencem ao tenant e são matérias-primas
     for (const comp of dto.componentes) {
       const mat = await this.repo.findOneBy({ id: comp.materialId, tenantId });
       if (!mat) throw new NotFoundException(`Material não encontrado: ${comp.materialId}`);
-      if (!mat.isMateriaPrima) throw new Error(`"${mat.nome}" não está marcado como matéria-prima`);
+      if (!mat.isMateriaPrima) {
+        throw new BadRequestException(
+          `"${mat.nome}" não está marcado como matéria-prima. Edite o produto e selecione o tipo "Matéria-Prima".`,
+        );
+      }
     }
 
     // Substitui todos os componentes
