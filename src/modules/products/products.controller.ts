@@ -5,6 +5,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -18,6 +19,7 @@ import { CreateMovementDto } from './dto/create-movement.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { ListAllMovementsDto } from './dto/list-all-movements.dto';
 import { ListProductsDto } from './dto/list-products.dto';
+import { SaveComponentsDto } from './dto/save-components.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductsService } from './products.service';
 
@@ -69,5 +71,19 @@ export class ProductsController {
   @Get(':id/movements')
   listMovements(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.service.listMovements(id, user.tenantId);
+  }
+
+  @Get(':id/components')
+  listComponents(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.service.listComponents(id, user.tenantId);
+  }
+
+  @Put(':id/components')
+  saveComponents(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: SaveComponentsDto,
+  ) {
+    return this.service.saveComponents(id, user.tenantId, dto);
   }
 }

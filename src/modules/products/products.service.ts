@@ -12,7 +12,9 @@ import { CreateMovementDto } from './dto/create-movement.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { ListAllMovementsDto } from './dto/list-all-movements.dto';
 import { ListProductsDto } from './dto/list-products.dto';
+import { SaveComponentsDto } from './dto/save-components.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { ProductComponent } from './entities/product-component.entity';
 import { ProductMovement } from './entities/product-movement.entity';
 import { Product } from './entities/product.entity';
 
@@ -23,6 +25,8 @@ export class ProductsService {
     private readonly repo: Repository<Product>,
     @InjectRepository(ProductMovement)
     private readonly movRepo: Repository<ProductMovement>,
+    @InjectRepository(ProductComponent)
+    private readonly compRepo: Repository<ProductComponent>,
     private readonly usersService: UsersService,
   ) {}
 
@@ -74,6 +78,7 @@ export class ProductsService {
         qtdMin: dto.qtdMin ?? 10,
         foto: dto.foto ?? null,
         ativo: dto.ativo ?? true,
+        isMateriaPrima: dto.isMateriaPrima ?? false,
         tenantId,
       }),
     );
@@ -100,14 +105,22 @@ export class ProductsService {
     const product = await this.repo.findOneBy({ id, tenantId });
     if (!product) throw new NotFoundException('Produto não encontrado');
 
-    const movimentacoes = await this.movRepo.find({
-      where: { productId: id },
-      order: { createdAt: 'DESC' },
-    });
+    const [movimentacoes, componentes] = await Promise.all([
+      this.movRepo.find({ where: { productId: id }, order: { createdAt: 'DESC' } }),
+      this.compRepo.find({ where: { productId: id }, relations: ['material'], order: { createdAt: 'ASC' } }),
+    ]);
 
     return {
       ...this.mapProduct(product),
       movimentacoes: movimentacoes.map((m) => this.mapMovement(m)),
+      componentes: componentes.map((c) => ({
+        id: c.id,
+        materialId: c.materialId,
+        materialNome: c.material?.nome ?? '',
+        materialSku: c.material?.sku ?? '',
+        quantidade: c.quantidade,
+        unidade: c.unidade,
+      })),
     };
   }
 
@@ -216,8 +229,62 @@ export class ProductsService {
       qtdMin: p.qtdMin,
       foto: p.foto,
       ativo: p.ativo,
+      isMateriaPrima: p.isMateriaPrima,
       criadoEm: p.createdAt.toISOString().split('T')[0],
     };
+  }
+
+  // ── Composição / Ficha Técnica ────────────────────────────────────
+
+  async listComponents(productId: string, tenantId: string) {
+    const product = await this.repo.findOneBy({ id: productId, tenantId });
+    if (!product) throw new NotFoundException('Produto não encontrado');
+
+    const comps = await this.compRepo.find({
+      where: { productId },
+      relations: ['material'],
+      order: { createdAt: 'ASC' },
+    });
+
+    return comps.map((c) => ({
+      id: c.id,
+      materialId: c.materialId,
+      materialNome: c.material?.nome ?? '',
+      materialSku: c.material?.sku ?? '',
+      quantidade: c.quantidade,
+      unidade: c.unidade,
+    }));
+  }
+
+  async saveComponents(productId: string, tenantId: string, dto: SaveComponentsDto) {
+    const product = await this.repo.findOneBy({ id: productId, tenantId });
+    if (!product) throw new NotFoundException('Produto não encontrado');
+    if (product.isMateriaPrima) {
+      throw new Error('Matérias-primas não podem ter composição');
+    }
+
+    // Valida se todos os materiais pertencem ao tenant e são matérias-primas
+    for (const comp of dto.componentes) {
+      const mat = await this.repo.findOneBy({ id: comp.materialId, tenantId });
+      if (!mat) throw new NotFoundException(`Material não encontrado: ${comp.materialId}`);
+      if (!mat.isMateriaPrima) throw new Error(`"${mat.nome}" não está marcado como matéria-prima`);
+    }
+
+    // Substitui todos os componentes
+    await this.compRepo.delete({ productId });
+    if (dto.componentes.length > 0) {
+      await this.compRepo.save(
+        dto.componentes.map((c) =>
+          this.compRepo.create({
+            productId,
+            materialId: c.materialId,
+            quantidade: c.quantidade,
+            unidade: c.unidade,
+          }),
+        ),
+      );
+    }
+    return this.listComponents(productId, tenantId);
   }
 
   private mapMovement(m: ProductMovement) {

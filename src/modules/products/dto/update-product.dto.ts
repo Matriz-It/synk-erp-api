@@ -52,4 +52,8 @@ export class UpdateProductDto {
   @IsOptional()
   @IsBoolean()
   ativo?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  isMateriaPrima?: boolean;
 }

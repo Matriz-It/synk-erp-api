@@ -54,4 +54,8 @@ export class CreateProductDto {
   @IsOptional()
   @IsBoolean()
   ativo?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  isMateriaPrima?: boolean;
 }

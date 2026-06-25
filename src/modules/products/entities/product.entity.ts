@@ -47,6 +47,9 @@ export class Product extends BaseEntity {
   @Column({ default: true })
   ativo: boolean;
 
+  @Column({ name: 'is_materia_prima', default: false })
+  isMateriaPrima: boolean;
+
   @Column({ name: 'tenant_id' })
   tenantId: string;
 
