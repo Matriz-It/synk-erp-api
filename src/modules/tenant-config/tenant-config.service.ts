@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Tenant } from '../tenants/entities/tenant.entity';
 import { TenantConfig } from './entities/tenant-config.entity';
 import { UpsertTenantConfigDto } from './dto/upsert-tenant-config.dto';
 
@@ -9,6 +10,8 @@ export class TenantConfigService {
   constructor(
     @InjectRepository(TenantConfig)
     private readonly repo: Repository<TenantConfig>,
+    @InjectRepository(Tenant)
+    private readonly tenantRepo: Repository<Tenant>,
   ) {}
 
   async get(tenantId: string): Promise<TenantConfig | null> {
@@ -16,12 +19,19 @@ export class TenantConfigService {
   }
 
   async upsert(tenantId: string, dto: UpsertTenantConfigDto): Promise<TenantConfig> {
+    // segmento vive na tabela tenants — não é coluna de tenant_configs
+    const { segmento, ...configDto } = dto;
+
+    if (segmento) {
+      await this.tenantRepo.update({ id: tenantId }, { segmento });
+    }
+
     let config = await this.repo.findOneBy({ tenantId });
 
     if (config) {
-      Object.assign(config, dto);
+      Object.assign(config, configDto);
     } else {
-      config = this.repo.create({ tenantId, ...dto });
+      config = this.repo.create({ tenantId, ...configDto });
     }
 
     return this.repo.save(config);

@@ -11,8 +11,12 @@ export class OrderItem extends BaseEntity {
   @JoinColumn({ name: 'order_id' })
   order: Order;
 
-  @Column({ name: 'product_id' })
-  productId: string;
+  // Item de produto OU de serviço — exatamente um dos dois é preenchido
+  @Column({ name: 'product_id', type: 'uuid', nullable: true })
+  productId: string | null;
+
+  @Column({ name: 'service_id', type: 'uuid', nullable: true })
+  serviceId: string | null;
 
   @Column({ length: 150 })
   nome: string;

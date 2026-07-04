@@ -26,6 +26,7 @@ export class AuthService {
     const tenant = await this.tenantsService.create(
       dto.tenantName,
       dto.tenantDocument,
+      dto.tenantSegment,
     );
 
     const hashedPassword = await bcrypt.hash(dto.adminPassword, BCRYPT_ROUNDS);
@@ -99,6 +100,7 @@ export class AuthService {
         name: tenant?.name ?? '',
         document: tenant?.document ?? null,
         plan: tenant?.plan ?? 'free',
+        segmento: tenant?.segmento ?? null,
       },
     };
   }

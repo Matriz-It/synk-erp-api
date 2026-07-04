@@ -1,7 +1,11 @@
-import { IsOptional, IsString, MaxLength, IsNumber, Min, Max, IsIn } from 'class-validator';
+import { IsEnum, IsOptional, IsString, MaxLength, IsNumber, Min, Max, IsIn } from 'class-validator';
 import { Type } from 'class-transformer';
+import { TenantSegment } from '../../../core/enums/enums';
 
 export class UpsertTenantConfigDto {
+  // Segmento (persistido no Tenant, não na config)
+  @IsOptional() @IsEnum(TenantSegment) segmento?: TenantSegment;
+
   // Dados complementares
   @IsOptional() @IsString() @MaxLength(150) nomeFantasia?: string;
   @IsOptional() @IsString() @MaxLength(20)  ie?: string;

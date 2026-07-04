@@ -15,9 +15,15 @@ import { Type } from 'class-transformer';
 import { OrderStatus } from '../../../core/enums/enums';
 
 export class CreateOrderItemDto {
+  @IsOptional()
   @IsString()
   @IsUUID()
-  productId: string;
+  productId?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsUUID()
+  serviceId?: string;
 
   @IsInt()
   @Min(1)

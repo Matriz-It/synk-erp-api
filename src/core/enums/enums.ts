@@ -58,6 +58,13 @@ export enum UserStatus {
   INACTIVE = 'inactive',
 }
 
+export enum TenantSegment {
+  COMERCIO  = 'comercio',
+  INDUSTRIA = 'industria',
+  SERVICOS  = 'servicos',
+  OUTROS    = 'outros',
+}
+
 export enum TenantPlan {
   FREE = 'free',
   PRO = 'pro',

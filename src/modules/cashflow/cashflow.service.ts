@@ -1,10 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { FinanceStatus } from '../../core/enums/enums';
+import { FinanceStatus, MovementType } from '../../core/enums/enums';
 import { Bill } from '../bills/entities/bill.entity';
 import { Receivable } from '../receivables/entities/receivable.entity';
+import { CreateCashEntryDto } from './dto/create-cash-entry.dto';
 import { GetCashflowDto } from './dto/get-cashflow.dto';
+import { CashEntry } from './entities/cash-entry.entity';
 
 export interface LancamentoCaixa {
   id: string;
@@ -23,12 +25,39 @@ export class CashflowService {
     private readonly receivableRepo: Repository<Receivable>,
     @InjectRepository(Bill)
     private readonly billRepo: Repository<Bill>,
+    @InjectRepository(CashEntry)
+    private readonly entryRepo: Repository<CashEntry>,
   ) {}
+
+  async createEntry(tenantId: string, dto: CreateCashEntryDto): Promise<LancamentoCaixa> {
+    const entry = await this.entryRepo.save(
+      this.entryRepo.create({
+        descricao: dto.descricao.trim(),
+        tipo: dto.tipo,
+        valor: dto.valor,
+        data: new Date().toISOString().slice(0, 10),
+        tenantId,
+      }),
+    );
+    return this.mapEntry(entry);
+  }
+
+  private mapEntry(e: CashEntry): LancamentoCaixa {
+    return {
+      id: e.id,
+      data: e.data,
+      descricao: e.descricao,
+      origem: 'Lançamento manual',
+      tipo: e.tipo === MovementType.ENTRADA ? 'entrada' : 'saida',
+      valor: e.valor,
+      categoria: 'Manual',
+    };
+  }
 
   async getCashflow(tenantId: string, dto: GetCashflowDto) {
     const mes = dto.mes ?? new Date().toISOString().slice(0, 7);
 
-    const [receivables, bills] = await Promise.all([
+    const [receivables, bills, entries] = await Promise.all([
       this.receivableRepo
         .createQueryBuilder('r')
         .where('r.tenant_id = :tenantId', { tenantId })
@@ -42,6 +71,8 @@ export class CashflowService {
         .andWhere(`b.status = '${FinanceStatus.PAGO}'`)
         .andWhere('b.pago_em IS NOT NULL')
         .getMany(),
+
+      this.entryRepo.find({ where: { tenantId } }),
     ]);
 
     const all: LancamentoCaixa[] = [
@@ -63,6 +94,7 @@ export class CashflowService {
         valor: b.valorPago ?? b.valor,
         categoria: b.categoria ?? 'Outros',
       })),
+      ...entries.map((e) => this.mapEntry(e)),
     ].sort((a, b) => a.data.localeCompare(b.data));
 
     const mesInicio = mes + '-01';

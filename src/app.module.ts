@@ -19,6 +19,7 @@ import { OrdersModule } from './modules/orders/orders.module';
 import { NfeModule } from './modules/nfe/nfe.module';
 import { QuotesModule } from './modules/quotes/quotes.module';
 import { ProductsModule } from './modules/products/products.module';
+import { ServicesModule } from './modules/services/services.module';
 import { TenantsModule } from './modules/tenants/tenants.module';
 import { TenantConfigModule } from './modules/tenant-config/tenant-config.module';
 import { SuppliersModule } from './modules/suppliers/suppliers.module';
@@ -58,6 +59,7 @@ import { UsersModule } from './modules/users/users.module';
     UsersModule,
     EmployeesModule,
     ProductsModule,
+    ServicesModule,
     ClientsModule,
     OrdersModule,
     QuotesModule,

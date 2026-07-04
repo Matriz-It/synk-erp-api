@@ -1,5 +1,6 @@
 import {
   IsEmail,
+  IsEnum,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -9,6 +10,7 @@ import {
   IsCnpj,
   IsCpf,
 } from '../../../common/validators/cpf-cnpj.validator';
+import { TenantSegment } from '../../../core/enums/enums';
 
 export class RegisterDto {
   @IsString()
@@ -18,6 +20,10 @@ export class RegisterDto {
   @IsOptional()
   @IsCnpj()
   tenantDocument?: string;
+
+  @IsOptional()
+  @IsEnum(TenantSegment)
+  tenantSegment?: TenantSegment;
 
   @IsString()
   @IsNotEmpty()

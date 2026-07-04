@@ -10,8 +10,9 @@ import { Client } from '../clients/entities/client.entity';
 import { ProductMovement } from '../products/entities/product-movement.entity';
 import { Product } from '../products/entities/product.entity';
 import { Receivable } from '../receivables/entities/receivable.entity';
+import { Service } from '../services/entities/service.entity';
 import { UsersService } from '../users/users.service';
-import { CreateOrderDto } from './dto/create-order.dto';
+import { CreateOrderDto, CreateOrderItemDto } from './dto/create-order.dto';
 import { ListOrdersDto } from './dto/list-orders.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { OrderItem } from './entities/order-item.entity';
@@ -26,8 +27,38 @@ export class OrdersService {
     @InjectRepository(Client)         private readonly clientRepo: Repository<Client>,
     @InjectRepository(Receivable)     private readonly receivableRepo: Repository<Receivable>,
     @InjectRepository(ProductMovement) private readonly movementRepo: Repository<ProductMovement>,
+    @InjectRepository(Service)        private readonly serviceRepo: Repository<Service>,
     private readonly usersService: UsersService,
   ) {}
+
+  // Resolve o snapshot (nome/sku/preço) de um item — produto ou serviço
+  private async resolveItemSnap(tenantId: string, item: CreateOrderItemDto) {
+    if (!item.productId === !item.serviceId) {
+      throw new BadRequestException('Cada item deve ter productId ou serviceId');
+    }
+
+    if (item.productId) {
+      const product = await this.productRepo.findOneBy({ id: item.productId, tenantId });
+      if (!product) throw new NotFoundException(`Produto não encontrado: ${item.productId}`);
+      return {
+        productId: product.id,
+        serviceId: null,
+        nome: product.nome,
+        sku: product.sku,
+        preco: product.preco,
+      };
+    }
+
+    const service = await this.serviceRepo.findOneBy({ id: item.serviceId!, tenantId });
+    if (!service) throw new NotFoundException(`Serviço não encontrado: ${item.serviceId}`);
+    return {
+      productId: null,
+      serviceId: service.id,
+      nome: service.nome,
+      sku: service.codigo,
+      preco: service.preco,
+    };
+  }
 
   async list(tenantId: string, query: ListOrdersDto) {
     const qb = this.orderRepo
@@ -66,21 +97,9 @@ export class OrdersService {
       : null;
     if (dto.clientId && !client) throw new NotFoundException('Cliente não encontrado');
 
-    type Snap = { nome: string; sku: string; preco: number };
-    const snaps = new Map<string, Snap>();
-    for (const item of dto.items) {
-      const product = await this.productRepo.findOneBy({
-        id: item.productId,
-        tenantId,
-      });
-      if (!product)
-        throw new NotFoundException(`Produto não encontrado: ${item.productId}`);
-      snaps.set(item.productId, {
-        nome: product.nome,
-        sku: product.sku,
-        preco: product.preco,
-      });
-    }
+    const snaps = await Promise.all(
+      dto.items.map((item) => this.resolveItemSnap(tenantId, item)),
+    );
 
     const result = await this.orderRepo.query(
       `SELECT COALESCE(MAX(numero), 999) + 1 AS next FROM orders WHERE tenant_id = $1`,
@@ -103,12 +122,13 @@ export class OrdersService {
     );
 
     order.items = await Promise.all(
-      dto.items.map((item) => {
-        const snap = snaps.get(item.productId)!;
+      dto.items.map((item, idx) => {
+        const snap = snaps[idx];
         return this.itemRepo.save(
           this.itemRepo.create({
             orderId: order.id,
-            productId: item.productId,
+            productId: snap.productId,
+            serviceId: snap.serviceId,
             nome: snap.nome,
             sku: snap.sku,
             preco: snap.preco,
@@ -163,23 +183,20 @@ export class OrdersService {
     const saved = await this.orderRepo.save(order);
 
     if (dto.items && dto.items.length > 0) {
+      const snaps = await Promise.all(
+        dto.items.map((item) => this.resolveItemSnap(tenantId, item)),
+      );
+
       await this.itemRepo.delete({ orderId: id });
 
-      type Snap = { nome: string; sku: string; preco: number };
-      const snaps = new Map<string, Snap>();
-      for (const item of dto.items) {
-        const product = await this.productRepo.findOneBy({ id: item.productId, tenantId });
-        if (!product) throw new NotFoundException(`Produto não encontrado: ${item.productId}`);
-        snaps.set(item.productId, { nome: product.nome, sku: product.sku, preco: product.preco });
-      }
-
       saved.items = await Promise.all(
-        dto.items.map((item) => {
-          const snap = snaps.get(item.productId)!;
+        dto.items.map((item, idx) => {
+          const snap = snaps[idx];
           return this.itemRepo.save(
             this.itemRepo.create({
               orderId: saved.id,
-              productId: item.productId,
+              productId: snap.productId,
+              serviceId: snap.serviceId,
               nome: snap.nome,
               sku: snap.sku,
               preco: snap.preco,
@@ -264,6 +281,7 @@ export class OrdersService {
       : 'Sistema';
 
     for (const item of items) {
+      if (!item.productId) continue; // serviços não movimentam estoque
       const product = await this.productRepo.findOneBy({ id: item.productId, tenantId });
       if (!product) continue;
 
@@ -370,6 +388,8 @@ export class OrdersService {
     return {
       id: i.id,
       productId: i.productId,
+      serviceId: i.serviceId,
+      tipo: i.serviceId ? 'servico' : 'produto',
       nome: i.nome,
       sku: i.sku,
       preco: i.preco,

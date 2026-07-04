@@ -5,9 +5,10 @@ import { Bill } from '../bills/entities/bill.entity';
 import { Receivable } from '../receivables/entities/receivable.entity';
 import { CashflowController } from './cashflow.controller';
 import { CashflowService } from './cashflow.service';
+import { CashEntry } from './entities/cash-entry.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Bill, Receivable])],
+  imports: [TypeOrmModule.forFeature([Bill, Receivable, CashEntry])],
   controllers: [CashflowController],
   providers: [CashflowService, RolesGuard],
 })
