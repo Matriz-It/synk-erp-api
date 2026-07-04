@@ -95,6 +95,7 @@ export class AuthService {
         name: user?.name ?? '',
         email: user?.email ?? '',
         role: user?.role ?? UserRole.PROPRIETARIO,
+        document: user?.document ?? null,
       },
       tenant: {
         name: tenant?.name ?? '',
