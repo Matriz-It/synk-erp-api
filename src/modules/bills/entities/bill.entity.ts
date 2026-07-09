@@ -35,6 +35,9 @@ export class Bill extends BaseEntity {
   @Column({ type: 'varchar', length: 10, name: 'pago_em', nullable: true })
   pagoEm: string | null;
 
+  @Column({ type: 'boolean', default: false })
+  fixa: boolean;
+
   @Column({
     type: 'decimal', precision: 12, scale: 2,
     name: 'valor_pago', nullable: true, default: null,

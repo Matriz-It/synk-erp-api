@@ -58,15 +58,9 @@ export class BillsService {
   }
 
   async create(tenantId: string, dto: CreateBillDto) {
-    const result = await this.repo.query(
-      `SELECT COALESCE(MAX(numero), 0) + 1 AS next FROM bills WHERE tenant_id = $1`,
-      [tenantId],
-    );
-    const numero = parseInt(result[0].next, 10);
-
     const bill = await this.repo.save(
       this.repo.create({
-        numero,
+        numero: await this.nextNumero(tenantId),
         parceiro: dto.parceiro.trim(),
         descricao: dto.descricao.trim(),
         valor: dto.valor,
@@ -74,10 +68,19 @@ export class BillsService {
         status: dto.status ?? FinanceStatus.ABERTO,
         categoria: dto.categoria?.trim() || null,
         obs: dto.obs?.trim() || null,
+        fixa: dto.fixa ?? false,
         tenantId,
       }),
     );
     return this.mapBill(bill);
+  }
+
+  private async nextNumero(tenantId: string): Promise<number> {
+    const result = await this.repo.query(
+      `SELECT COALESCE(MAX(numero), 0) + 1 AS next FROM bills WHERE tenant_id = $1`,
+      [tenantId],
+    );
+    return parseInt(result[0].next, 10);
   }
 
   async findOne(id: string, tenantId: string) {
@@ -96,16 +99,52 @@ export class BillsService {
     if (dto.status !== undefined) bill.status = dto.status;
     if (dto.categoria !== undefined) bill.categoria = dto.categoria?.trim() || null;
     if (dto.obs !== undefined) bill.obs = dto.obs?.trim() || null;
+    if (dto.fixa !== undefined) bill.fixa = dto.fixa;
     return this.mapBill(await this.repo.save(bill));
   }
 
   async pay(id: string, tenantId: string, dto: PayBillDto) {
     const bill = await this.repo.findOneBy({ id, tenantId });
     if (!bill) throw new NotFoundException('Conta não encontrada');
+    const jaEstaPaga = bill.status === FinanceStatus.PAGO;
     bill.status = FinanceStatus.PAGO;
     bill.pagoEm = dto.pagoEm ?? new Date().toISOString().split('T')[0];
     bill.valorPago = dto.valorPago ?? bill.valor;
-    return this.mapBill(await this.repo.save(bill));
+    const paga = await this.repo.save(bill);
+
+    // Conta fixa: ao baixar, gera automaticamente a ocorrência do mês seguinte
+    let proxima: Bill | null = null;
+    if (bill.fixa && !jaEstaPaga) {
+      proxima = await this.repo.save(
+        this.repo.create({
+          numero: await this.nextNumero(tenantId),
+          parceiro: bill.parceiro,
+          descricao: bill.descricao,
+          valor: bill.valor,
+          vencimento: this.addOneMonth(bill.vencimento),
+          status: FinanceStatus.ABERTO,
+          categoria: bill.categoria,
+          obs: bill.obs,
+          fixa: true,
+          tenantId,
+        }),
+      );
+    }
+
+    return {
+      ...this.mapBill(paga),
+      ...(proxima ? { proxima: this.mapBill(proxima) } : {}),
+    };
+  }
+
+  /** Soma 1 mês a uma data YYYY-MM-DD, ajustando o dia ao fim do mês (31/01 → 28/02). */
+  private addOneMonth(vencimento: string): string {
+    const [y, m, d] = vencimento.split('-').map(Number);
+    const nextY = m === 12 ? y + 1 : y;
+    const nextM = m === 12 ? 1 : m + 1;
+    const lastDay = new Date(nextY, nextM, 0).getDate();
+    const day = Math.min(d, lastDay);
+    return `${nextY}-${String(nextM).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
   }
 
   async remove(id: string, tenantId: string) {
@@ -125,6 +164,7 @@ export class BillsService {
       status: this.computeStatus(b.status, b.vencimento),
       categoria: b.categoria ?? '',
       obs: b.obs ?? '',
+      fixa: b.fixa,
       pagoEm: b.pagoEm ?? undefined,
       valorPago: b.valorPago ?? undefined,
       criadoEm: b.createdAt.toISOString().split('T')[0],

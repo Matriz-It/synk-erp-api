@@ -1,4 +1,4 @@
-import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsPositive, IsString } from 'class-validator';
+import { IsBoolean, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsPositive, IsString } from 'class-validator';
 import { Type } from 'class-transformer';
 import { FinanceStatus } from '../../../core/enums/enums';
 
@@ -10,4 +10,5 @@ export class UpdateBillDto {
   @IsOptional() @IsEnum(FinanceStatus) status?: FinanceStatus;
   @IsOptional() @IsString() categoria?: string;
   @IsOptional() @IsString() obs?: string;
+  @IsOptional() @IsBoolean() fixa?: boolean;
 }
