@@ -28,4 +28,13 @@ export default registerAs('app', () => ({
     inviteTtlHours: parseInt(process.env.INVITE_TOKEN_TTL_HOURS ?? '48', 10),
     resetTtlHours: parseInt(process.env.RESET_TOKEN_TTL_HOURS ?? '2', 10),
   },
+
+  billing: {
+    adminSecret: process.env.BILLING_ADMIN_SECRET ?? 'change_me_billing_admin_secret',
+  },
+
+  mercadopago: {
+    accessToken: process.env.MP_ACCESS_TOKEN ?? '',
+    webhookSecret: process.env.MP_WEBHOOK_SECRET ?? '',
+  },
 }));

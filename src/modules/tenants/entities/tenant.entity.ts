@@ -14,11 +14,14 @@ export class Tenant extends BaseEntity {
   @Column({ type: 'enum', enum: TenantSegment, nullable: true })
   segmento: TenantSegment | null;
 
-  @Column({ type: 'enum', enum: TenantPlan, default: TenantPlan.FREE })
+  @Column({ type: 'enum', enum: TenantPlan, default: TenantPlan.PRO })
   plan: TenantPlan;
 
   @Column({ type: 'enum', enum: TenantStatus, default: TenantStatus.ACTIVE })
   status: TenantStatus;
+
+  @Column({ type: 'timestamptz', name: 'trial_ends_at', nullable: true })
+  trialEndsAt: Date | null;
 
   @OneToMany(() => User, (user) => user.tenant)
   users: User[];

@@ -1,6 +1,7 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { TRIAL_DAYS } from '../../core/constants/billing.constants';
 import { TenantSegment } from '../../core/enums/enums';
 import { Tenant } from './entities/tenant.entity';
 
@@ -17,7 +18,10 @@ export class TenantsService {
       const existing = await this.repo.findOneBy({ document: normalized });
       if (existing) throw new ConflictException('CNPJ já cadastrado');
     }
-    return this.repo.save(this.repo.create({ name, document: normalized, segmento: segmento ?? null }));
+    const trialEndsAt = new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
+    return this.repo.save(
+      this.repo.create({ name, document: normalized, segmento: segmento ?? null, trialEndsAt }),
+    );
   }
 
   findById(id: string): Promise<Tenant | null> {

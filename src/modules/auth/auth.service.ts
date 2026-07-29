@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UserRole, UserStatus } from '../../core/enums/enums';
+import { FaturasService } from '../faturas/faturas.service';
 import { TenantsService } from '../tenants/tenants.service';
 import { UsersService } from '../users/users.service';
 import { ChangePasswordDto } from './dto/change-password.dto';
@@ -20,6 +21,7 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
+    private readonly faturasService: FaturasService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -85,9 +87,10 @@ export class AuthService {
   }
 
   async getMe(userId: string, tenantId: string) {
-    const [user, tenant] = await Promise.all([
+    const [user, tenant, billing] = await Promise.all([
       this.usersService.findById(userId),
       this.tenantsService.findById(tenantId),
+      this.faturasService.getStatus(tenantId),
     ]);
     return {
       user: {
@@ -100,8 +103,10 @@ export class AuthService {
       tenant: {
         name: tenant?.name ?? '',
         document: tenant?.document ?? null,
-        plan: tenant?.plan ?? 'free',
+        plan: tenant?.plan ?? 'pro',
         segmento: tenant?.segmento ?? null,
+        trialEndsAt: billing.trialEndsAt,
+        billingBlocked: billing.blocked,
       },
     };
   }

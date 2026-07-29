@@ -9,6 +9,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { SkipBillingGate } from '../../common/decorators/skip-billing-gate.decorator';
 import { AuthService } from './auth.service';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { LoginDto } from './dto/login.dto';
@@ -48,12 +49,14 @@ export class AuthController {
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(JwtAuthGuard)
+  @SkipBillingGate()
   logout(@CurrentUser() user: AuthUser) {
     return this.authService.logout(user.id);
   }
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
+  @SkipBillingGate()
   me(@CurrentUser() user: AuthUser) {
     return this.authService.getMe(user.id, user.tenantId);
   }

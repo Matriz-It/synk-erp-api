@@ -66,15 +66,21 @@ export enum TenantSegment {
 }
 
 export enum TenantPlan {
-  FREE = 'free',
-  PRO = 'pro',
-  ENTERPRISE = 'enterprise',
+  PRO           = 'pro',
+  BUSINESS      = 'business',
+  PERSONALIZADO = 'personalizado',
 }
 
 export enum TenantStatus {
   ACTIVE = 'active',
   INACTIVE = 'inactive',
   SUSPENDED = 'suspended',
+}
+
+export enum FaturaStatus {
+  PENDENTE  = 'pendente',
+  PAGO      = 'pago',
+  CANCELADO = 'cancelado',
 }
 
 export enum NFeStatus {
