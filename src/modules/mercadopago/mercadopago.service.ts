@@ -50,6 +50,7 @@ export class MercadoPagoService {
       installments: params.installments,
       issuer_id: params.issuerId,
       external_reference: params.externalReference,
+      notification_url: `${this.config.getOrThrow<string>('app.url')}/webhooks/mercadopago`,
       payer: {
         email: params.payerEmail,
         identification: params.payerIdentification,

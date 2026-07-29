@@ -4,6 +4,7 @@ export default registerAs('app', () => ({
   nodeEnv: process.env.NODE_ENV ?? 'development',
   port: parseInt(process.env.APP_PORT ?? '3000', 10),
   secret: process.env.APP_SECRET ?? 'fallback_secret',
+  url: process.env.APP_URL ?? 'https://synk-erp-api-production-13ef.up.railway.app',
 
   jwt: {
     accessSecret: process.env.JWT_ACCESS_SECRET ?? 'access_secret',
