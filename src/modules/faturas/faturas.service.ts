@@ -1,7 +1,7 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { CICLO_DIAS, PLAN_PRICE } from '../../core/constants/billing.constants';
+import { BLOQUEIO_APOS_ATRASO_DIAS, CICLO_DIAS, PLAN_PRICE } from '../../core/constants/billing.constants';
 import { FaturaStatus, TenantPlan } from '../../core/enums/enums';
 import { MercadoPagoService } from '../mercadopago/mercadopago.service';
 import { Tenant } from '../tenants/entities/tenant.entity';
@@ -25,13 +25,14 @@ export class FaturasService {
     return faturas.map((f) => this.mapFatura(f));
   }
 
+  /** Bloqueia só depois de BLOQUEIO_APOS_ATRASO_DIAS dias de atraso — antes disso a fatura fica visível como vencida, mas o sistema continua liberado. */
   async isBlocked(tenantId: string): Promise<boolean> {
-    const today = new Date().toISOString().split('T')[0];
+    const cutoff = this.addDays(new Date().toISOString().split('T')[0], -BLOQUEIO_APOS_ATRASO_DIAS);
     const overdue = await this.repo
       .createQueryBuilder('f')
       .where('f.tenant_id = :tenantId', { tenantId })
       .andWhere('f.status = :st', { st: FaturaStatus.PENDENTE })
-      .andWhere('f.vencimento <= :today', { today })
+      .andWhere('f.vencimento <= :cutoff', { cutoff })
       .getCount();
     return overdue > 0;
   }
